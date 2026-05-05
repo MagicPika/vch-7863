@@ -194,7 +194,7 @@ export const STATUTES: StatuteChapter[] = [
 
 export const INITIAL_SOLDIERS: Soldier[] = [
   // ⭐️ ШТАБ В/Ч
-  { id: 's1', name: 'Рублев Александр Сергеевич', rankId: 10, division: 'Штаб В/Ч', position: 'Командир В/Ч', discord: '@Генерал | А. Рублев | 1946', status: 'В СТРОЮ', warnings: 0, medals: ['Орден Мужества', 'Медаль «За отвагу»', 'Орден «За заслуги перед Отечеством» IV ст.'], joinDate: '2022-03-15', avatar: 'https://images.unsplash.com/photo-1579038773843-c5a5274c3095?w=150&auto=format&fit=crop&q=60' },
+  { id: 's1', name: 'Рублев Александр Сергеевич', rankId: 10, division: 'Штаб В/Ч', position: 'Командир В/Ч', discord: '@Генерал | А. Рублев | 1946', status: 'В СТРОЮ', warnings: 0, medals: ['Орден Мужества', 'Медаль «За отвагу»', 'Орден «За заслуги перед Отечеством» IV ст.'], joinDate: '2022-03-15', avatar: 'https://cdn.discordapp.com/avatars/645977301623898123/b8a84d90c29d98f1fcbed52ee61755e6.png?w=150&auto=format&fit=crop&q=60' },
   { id: 's2', name: 'Градский Артур Дмитриевич', rankId: 9, division: 'Штаб В/Ч', position: 'Заместитель командира В/Ч', discord: '@ЗК ВЧ | Градский А.Д | 4444', status: 'В СТРОЮ', warnings: 0, medals: ['Медаль «За отличие в воинской службе» I ст.', 'Орден «За военные заслуги»'], joinDate: '2023-01-10', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=60' },
   { id: 's3', name: 'Кирсанов Кирилл Олегович', rankId: 9, division: 'Штаб В/Ч', position: 'Заместитель командира В/Ч', discord: '@ЗК ВЧ | Кирилл Кирсанов | 343', status: 'В СТРОЮ', warnings: 0, medals: ['Орден «За военные заслуги»', 'Медаль «За отвагу»'], joinDate: '2023-03-20', avatar: 'https://images.unsplash.com/photo-1542103749-8ef59b94f4d3?w=150&auto=format&fit=crop&q=60' },
   
