@@ -27,7 +27,7 @@ import {
 } from './data/mockData';
 import { playTacticalSound } from './utils/sound';
 
-const emblemUrl = new URL('../public/emblem.webp', import.meta.url).href;
+const emblemUrl = new URL('../public/emblem.png', import.meta.url).href;
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'statutes' | 'roster' | 'divisions' | 'test' | 'guide'>('home');
