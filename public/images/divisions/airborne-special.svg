@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480">
+  <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#1e1b4b"/><stop offset="1" stop-color="#020617"/></linearGradient></defs>
+  <rect width="1200" height="480" fill="url(#g)"/>
+  <circle cx="260" cy="210" r="145" fill="none" stroke="#818cf8" stroke-width="10" opacity=".85"/>
+  <path d="M155 205 C190 125 330 125 365 205" fill="none" stroke="#e5e7eb" stroke-width="18" stroke-linecap="round"/>
+  <path d="M260 130 V335 M190 205 L260 335 L330 205" stroke="#e5e7eb" stroke-width="14" stroke-linecap="round" fill="none"/>
+  <text x="470" y="210" fill="#e5e7eb" font-family="Arial, sans-serif" font-size="84" font-weight="700">9TH</text>
+  <text x="470" y="275" fill="#818cf8" font-family="Arial, sans-serif" font-size="34" letter-spacing="8">AIRBORNE SPECIAL</text>
+</svg>
