@@ -27,8 +27,6 @@ import {
 } from './data/mockData';
 import { playTacticalSound } from './utils/sound';
 
-const emblemUrl = new URL('../public/emblem.png', import.meta.url).href;
-
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'statutes' | 'roster' | 'divisions' | 'test' | 'guide'>('home');
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -159,7 +157,7 @@ export default function App() {
           <div className="flex items-center gap-4">
             <div className="relative shrink-0">
               <img 
-                src={emblemUrl} 
+                src="./emblem.png" 
                 alt="Герб ВС Региональной Федерации" 
                 className="h-20 w-20 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]"
               />
@@ -232,7 +230,7 @@ export default function App() {
               <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-900 border border-emerald-500/20 p-6 rounded-2xl relative overflow-hidden">
                 <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-emerald-500/10 rounded-full filter blur-3xl" />
                 <img 
-                  src={emblemUrl} 
+                  src="./emblem.png" 
                   alt="" 
                   className="absolute -right-8 top-1/2 -translate-y-1/2 h-48 w-48 object-contain opacity-10"
                 />
@@ -854,7 +852,7 @@ export default function App() {
       <footer className="max-w-7xl mx-auto px-4 mt-12 border-t border-emerald-900/40 pt-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-mono-military text-slate-500">
           <div className="flex items-center gap-3">
-            <img src={emblemUrl} alt="" className="h-10 w-10 object-contain opacity-70" />
+            <img src="./emblem.png" alt="" className="h-10 w-10 object-contain opacity-70" />
             <div>
               <p className="text-slate-400">© 2026 МИНИСТЕРСТВО ОБОРОНЫ РЕГИОНАЛЬНОЙ ФЕДЕРАЦИИ</p>
               <p className="text-[10px] mt-0.5">Воинская часть №7863 • Информационный портал для призывников и новобранцев</p>
