@@ -633,13 +633,13 @@ export default function App() {
                 return (
                   <div key={code} className="bg-slate-900/90 border border-slate-800 hover:border-emerald-600/40 transition rounded-2xl overflow-hidden">
                     {division.image && (
-                      <div className="relative h-36 border-b border-slate-800 bg-slate-950">
+                      <div className="relative h-64 border-b border-slate-800 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.12),rgba(2,6,23,0.95)_62%)]">
                         <img
                           src={division.image}
                           alt={division.name}
-                          className="h-full w-full object-cover opacity-90"
+                          className="mx-auto h-full w-full object-contain p-5 drop-shadow-[0_0_22px_rgba(0,0,0,0.65)]"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/20 pointer-events-none" />
                         <div className="absolute bottom-3 left-4 text-[10px] font-mono-military uppercase tracking-widest text-emerald-300/90">
                           В/Ч №7863 • {code}
                         </div>
