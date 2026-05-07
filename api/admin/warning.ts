@@ -4,6 +4,7 @@
 // =====================================================
 import { prisma } from '../_lib/prisma.js';
 import { getUserFromRequest, requireCommander } from '../_lib/auth.js';
+import { parseRequestUrl } from '../_lib/url.js';
 
 export const config = { runtime: 'nodejs' };
 
