@@ -1,0 +1,102 @@
+// =====================================================
+// 📊 СХЕМА БАЗЫ ДАННЫХ В/Ч 7863
+// =====================================================
+// Здесь описаны все таблицы.
+// При изменении — выполнить: npx prisma db push
+// =====================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 🪖 Военнослужащий (расширенный профиль)
+// id = Discord ID пользователя
+model Soldier {
+  id          String   @id  // Discord ID
+  username    String   // Discord username
+  displayName String   // Имя для отображения (Иванов И.И.)
+  avatar      String?  // URL аватара из Discord (кэш)
+  rankName    String?  // Текущее звание (из Discord-роли)
+  divisionCode String? // Подразделение (из Discord-роли)
+  position    String?  // Должность (Командир МСТ и т.д.)
+  joinDate    DateTime @default(now()) // Дата вступления в часть
+  status      String   @default("В СТРОЮ") // В СТРОЮ / ОТПУСК / РЕЗЕРВ
+  notes       String?  // Заметки о бойце (видны только командованию)
+
+  awards      Award[]
+  warnings    Warning[]
+  history     RankChange[]
+  diplomas    Diploma[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 🎖️ Награда (медаль, орден, благодарность)
+model Award {
+  id          String   @id @default(cuid())
+  soldierId   String
+  soldier     Soldier  @relation(fields: [soldierId], references: [id], onDelete: Cascade)
+
+  name        String   // Название (например "Медаль За Отвагу")
+  description String?  // За что выдана
+  icon        String   @default("medal") // medal / star / cross / trophy
+  color       String   @default("amber") // amber / red / blue / emerald
+
+  awardedBy   String?  // Discord ID того кто выдал
+  awardedByName String? // Имя выдавшего
+  awardedAt   DateTime @default(now())
+}
+
+// ⚠️ Выговор / дисциплинарное взыскание
+model Warning {
+  id          String   @id @default(cuid())
+  soldierId   String
+  soldier     Soldier  @relation(fields: [soldierId], references: [id], onDelete: Cascade)
+
+  type        String   // выговор / ограничение увольнения / снижение в звании
+  reason      String   // Причина
+  isActive    Boolean  @default(true) // снято или нет
+
+  issuedBy    String?  // Discord ID
+  issuedByName String?
+  issuedAt    DateTime @default(now())
+  removedAt   DateTime?
+  removedBy   String?
+  removedByName String?
+}
+
+// 📈 История изменения званий
+model RankChange {
+  id          String   @id @default(cuid())
+  soldierId   String
+  soldier     Soldier  @relation(fields: [soldierId], references: [id], onDelete: Cascade)
+
+  fromRank    String?  // С какого (null = первое присвоение)
+  toRank      String   // На какое
+  reason      String?  // Причина повышения/понижения
+
+  changedBy   String?  // Discord ID
+  changedByName String?
+  changedAt   DateTime @default(now())
+}
+
+// 🎓 Диплом / сертификат
+model Diploma {
+  id          String   @id @default(cuid())
+  soldierId   String
+  soldier     Soldier  @relation(fields: [soldierId], references: [id], onDelete: Cascade)
+
+  title       String   // "Диплом КМБ"
+  number      String?  // Номер диплома
+  description String?
+
+  issuedBy    String?  // Discord ID того кто выдал
+  issuedByName String?
+  issuedAt    DateTime @default(now())
+}

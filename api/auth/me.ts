@@ -1,6 +1,9 @@
 // =====================================================
 // 🔐 Discord OAuth — получить данные текущего пользователя
 // =====================================================
+// Возвращает данные пользователя из cookie (если он залогинен)
+// или null (если нет).
+// =====================================================
 
 export const config = {
   runtime: 'edge',
@@ -17,6 +20,7 @@ export default function handler(req: Request) {
   }
 
   try {
+    // Декодируем URL-safe base64 → UTF-8 → JSON
     let b64 = match[1].replace(/-/g, '+').replace(/_/g, '/');
     while (b64.length % 4) b64 += '=';
     const binary = atob(b64);

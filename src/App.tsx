@@ -78,6 +78,8 @@ export default function App() {
       .then(data => {
         if (data.user) {
           setDiscordUser(buildDiscordUser(data.user));
+          // Синхронизируем профиль с базой данных
+          fetch('/api/soldier/sync', { method: 'POST' }).catch(() => {});
         }
       })
       .catch(() => {});
@@ -1512,6 +1514,92 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {/* 🛡️ АДМИН-ПАНЕЛЬ — только для командования */}
+              {discordUser?.isCommander && viewSoldier && !isOwn && (
+                <div className="p-5 border-t border-amber-500/30 bg-amber-950/20">
+                  <h3 className="font-oswald font-bold text-base text-amber-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    🛡️ Действия командования
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Выдать награду */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const name = prompt('Название награды:', 'Медаль «За отвагу»');
+                        if (!name) return;
+                        const description = prompt('За что? (необязательно)', '');
+                        try {
+                          const res = await fetch('/api/admin/award', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              soldierId: viewSoldier!.id,
+                              name,
+                              description: description || null,
+                              icon: 'medal',
+                              color: 'amber',
+                            }),
+                          });
+                          const data = await res.json();
+                          if (data.ok) {
+                            alert('✅ Награда выдана!');
+                            triggerSound('success');
+                            window.location.reload();
+                          } else {
+                            alert('❌ ' + (data.error || 'Ошибка'));
+                          }
+                        } catch (e: any) {
+                          alert('Ошибка сети: ' + e.message);
+                        }
+                      }}
+                      className="bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/40 text-amber-200 font-oswald font-bold py-2.5 px-4 rounded-lg text-xs uppercase tracking-wider transition flex items-center justify-center gap-2"
+                    >
+                      <Award className="h-4 w-4" />
+                      Выдать награду
+                    </button>
+
+                    {/* Записать выговор */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const reason = prompt('Причина выговора:', '');
+                        if (!reason) return;
+                        try {
+                          const res = await fetch('/api/admin/warning', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              soldierId: viewSoldier!.id,
+                              type: 'выговор',
+                              reason,
+                            }),
+                          });
+                          const data = await res.json();
+                          if (data.ok) {
+                            alert('⚠️ Выговор записан');
+                            triggerSound('alert');
+                            window.location.reload();
+                          } else {
+                            alert('❌ ' + (data.error || 'Ошибка'));
+                          }
+                        } catch (e: any) {
+                          alert('Ошибка сети: ' + e.message);
+                        }
+                      }}
+                      className="bg-red-600/20 hover:bg-red-600/40 border border-red-500/40 text-red-200 font-oswald font-bold py-2.5 px-4 rounded-lg text-xs uppercase tracking-wider transition flex items-center justify-center gap-2"
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                      Записать выговор
+                    </button>
+                  </div>
+
+                  <p className="text-[10px] font-mono-military text-amber-300/60 mt-3 text-center">
+                    🔐 Действия видны только пользователям с ролью «Командование»
+                  </p>
+                </div>
+              )}
 
               {/* Подвал модалки — кнопки действий */}
               <div className="p-5 border-t border-slate-800 bg-slate-950 flex flex-wrap gap-2 justify-end">
