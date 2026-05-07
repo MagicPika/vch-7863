@@ -2,8 +2,8 @@
 // 🎖️ POST /api/admin/award — выдать награду
 // DELETE /api/admin/award?id=... — удалить награду
 // =====================================================
-import { prisma } from '../_lib/prisma';
-import { getUserFromRequest, requireCommander } from '../_lib/auth';
+import { prisma } from '../_lib/prisma.js';
+import { getUserFromRequest, requireCommander } from '../_lib/auth.js';
 
 export const config = { runtime: 'nodejs' };
 
