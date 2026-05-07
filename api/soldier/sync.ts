@@ -4,8 +4,8 @@
 // Вызывается автоматически после входа.
 // Создаёт запись солдата если её нет, или обновляет данные.
 // =====================================================
-import { prisma } from '../_lib/prisma';
-import { getUserFromRequest } from '../_lib/auth';
+import { prisma } from '../_lib/prisma.js';
+import { getUserFromRequest } from '../_lib/auth.js';
 
 export const config = { runtime: 'nodejs' };
 
