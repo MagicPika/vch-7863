@@ -13,7 +13,7 @@ export default async function handler(req: Request) {
   const url = parseRequestUrl(req);
   const secret = url.searchParams.get('secret');
 
-  const expectedSecret = process.env.MIGRATION_SECRET || 'vch7863-init-please-change-me';
+  const expectedSecret = process.env.MIGRATION_SECRET || 'vch7863-init-2026';
   if (secret !== expectedSecret) {
     return new Response(
       JSON.stringify({
