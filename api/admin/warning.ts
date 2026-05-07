@@ -2,8 +2,8 @@
 // ⚠️ POST /api/admin/warning — выдать выговор
 // DELETE /api/admin/warning?id=... — снять выговор
 // =====================================================
-import { prisma } from '../_lib/prisma';
-import { getUserFromRequest, requireCommander } from '../_lib/auth';
+import { prisma } from '../_lib/prisma.js';
+import { getUserFromRequest, requireCommander } from '../_lib/auth.js';
 
 export const config = { runtime: 'nodejs' };
 
