@@ -1,10 +1,10 @@
-import headquartersImg from '../assets/divisions/headquarters.svg';
-import militaryPoliceImg from '../assets/divisions/military-police.svg';
-import airborneSpecialImg from '../assets/divisions/airborne-special.svg';
-import motorizedImg from '../assets/divisions/motorized.svg';
-import commissariatImg from '../assets/divisions/commissariat.svg';
-import logisticsImg from '../assets/divisions/logistics.svg';
-import academyImg from '../assets/divisions/academy.svg';
+import headquartersImg from '../assets/divisions/headquarters.png';
+import militaryPoliceImg from '../assets/divisions/military-police.png';
+import airborneSpecialImg from '../assets/divisions/airborne-special.png';
+import motorizedImg from '../assets/divisions/motorized.png';
+import commissariatImg from '../assets/divisions/commissariat.png';
+import logisticsImg from '../assets/divisions/logistics.png';
+import academyImg from '../assets/divisions/academy.png';
 
 export interface StatuteChapter {
   id: string;
