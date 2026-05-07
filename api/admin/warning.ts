@@ -8,7 +8,7 @@ import { getUserFromRequest, requireCommander } from '../_lib/auth.js';
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req: Request) {
-  const url = new URL(req.url);
+  const url = parseRequestUrl(req);
 
   // ====== СНЯТИЕ ВЫГОВОРА ======
   if (req.method === 'DELETE') {
