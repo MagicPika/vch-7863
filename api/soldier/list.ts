@@ -1,7 +1,7 @@
 // =====================================================
 // 📋 GET /api/soldier/list — список всех зарегистрированных
 // =====================================================
-import { prisma } from '../_lib/prisma';
+import { prisma } from '../_lib/prisma.js';
 
 export const config = { runtime: 'nodejs' };
 
