@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Shield,
   Users,
@@ -14,7 +14,10 @@ import {
   Search,
   ExternalLink,
   HelpCircle,
-  ArrowRight
+  ArrowRight,
+  Lock as LockIcon,
+  KeyRound,
+  GraduationCap
 } from 'lucide-react';
 import {
   JOIN_REQUIREMENTS,
@@ -26,16 +29,123 @@ import {
   PRACTICE_QUESTIONS
 } from './data/mockData';
 import { playTacticalSound } from './utils/sound';
+import emblemUrl from './assets/emblem.png';
+import { buildDiscordUser, type DiscordUser } from './config/discord';
+
+// 🔗 Ссылка на закрытый портал ЕИС МО РФ
+const STAFF_PORTAL_URL = 'https://netd08800-commits.github.io/vooruzhennye-sily/';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'statutes' | 'roster' | 'divisions' | 'test' | 'guide'>('home');
   const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // 🔐 Discord-авторизация
+  const [discordUser, setDiscordUser] = useState<DiscordUser | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Флаг "пользователь авторизован и состоит в нашем сервере"
+  const staffAuthorized = !!discordUser?.isMember;
+
+  // 🕵️ Секретная активация: 5 кликов по гербу или комбинация Ctrl+Shift+L
+  const [emblemClicks, setEmblemClicks] = useState(0);
+
+  // Загружаем данные пользователя при старте
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(data => {
+        if (data.user) {
+          setDiscordUser(buildDiscordUser(data.user));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Показ уведомления о результате входа
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const auth = params.get('auth');
+    if (auth === 'success') {
+      triggerSound('success');
+      // Чистим query
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (auth === 'error' || auth === 'cancelled') {
+      triggerSound('alert');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleEmblemClick = () => {
+    const next = emblemClicks + 1;
+    setEmblemClicks(next);
+    if (next >= 5) {
+      setEmblemClicks(0);
+      if (staffAuthorized) {
+        window.open(STAFF_PORTAL_URL, '_blank', 'noopener,noreferrer');
+        triggerSound('success');
+      } else {
+        setShowLoginModal(true);
+        triggerSound('click');
+      }
+    }
+    setTimeout(() => setEmblemClicks(0), 2000);
+  };
+
+  // Горячая клавиша для входа: Ctrl+Shift+L
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'L' || e.key === 'l' || e.key === 'д' || e.key === 'Д')) {
+        e.preventDefault();
+        if (staffAuthorized) {
+          window.open(STAFF_PORTAL_URL, '_blank', 'noopener,noreferrer');
+        } else {
+          setShowLoginModal(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [staffAuthorized]);
+
+  // Старт OAuth-входа через Discord
+  const handleDiscordLogin = () => {
+    triggerSound('click');
+    window.location.href = '/api/auth/login';
+  };
+
+  // Выход
+  const handleLogout = () => {
+    triggerSound('click');
+    window.location.href = '/api/auth/logout';
+  };
+
+  // Открыть портал ЕИС
+  const openStaffPortal = () => {
+    if (staffAuthorized) {
+      window.open(STAFF_PORTAL_URL, '_blank', 'noopener,noreferrer');
+      triggerSound('click');
+    } else {
+      setShowLoginModal(true);
+      triggerSound('click');
+    }
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatute, setSelectedStatute] = useState<string>('general');
   const [divisionFilter, setDivisionFilter] = useState<string>('ALL');
 
   const divisionsList = ['ALL', 'Штаб В/Ч', 'ВП', '9-я рота', '12-й бат.', 'Военкомат', 'МТО', 'Академия'];
   const divisionEntries = Object.entries(DIVISIONS);
+  // Цветовая палитра каждого подразделения (как в реальных войсках)
+  const divisionTheme: Record<string, { accent: string; bg: string; ring: string; glow: string; label: string; motto: string }> = {
+    'Штаб В/Ч':  { accent: 'text-amber-300',   bg: 'from-amber-950/80 via-slate-950 to-slate-950',   ring: 'border-amber-500/40',   glow: 'shadow-amber-500/20',   label: 'bg-amber-500/15 text-amber-300 border-amber-500/30',   motto: '«Командование решает всё»' },
+    'ВП':        { accent: 'text-red-300',     bg: 'from-red-950/80 via-slate-950 to-slate-950',     ring: 'border-red-500/40',     glow: 'shadow-red-500/20',     label: 'bg-red-500/15 text-red-300 border-red-500/30',         motto: '«Закон. Порядок. Дисциплина»' },
+    '9-я рота':  { accent: 'text-blue-300',    bg: 'from-blue-950/80 via-slate-950 to-slate-950',    ring: 'border-blue-500/40',    glow: 'shadow-blue-500/20',    label: 'bg-blue-500/15 text-blue-300 border-blue-500/30',       motto: '«Никто, кроме нас!»' },
+    '12-й бат.': { accent: 'text-emerald-300', bg: 'from-emerald-950/80 via-slate-950 to-slate-950', ring: 'border-emerald-500/40', glow: 'shadow-emerald-500/20', label: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', motto: '«Вперёд, на врага!»' },
+    'Военкомат': { accent: 'text-cyan-300',    bg: 'from-cyan-950/80 via-slate-950 to-slate-950',    ring: 'border-cyan-500/40',    glow: 'shadow-cyan-500/20',    label: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',       motto: '«Долг каждого — служить Отечеству»' },
+    'МТО':       { accent: 'text-orange-300',  bg: 'from-orange-950/80 via-slate-950 to-slate-950',  ring: 'border-orange-500/40',  glow: 'shadow-orange-500/20',  label: 'bg-orange-500/15 text-orange-300 border-orange-500/30', motto: '«Без снабжения нет победы»' },
+    'Академия':  { accent: 'text-yellow-300',  bg: 'from-yellow-950/80 via-slate-950 to-slate-950',  ring: 'border-yellow-500/40',  glow: 'shadow-yellow-500/20',  label: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30', motto: '«Знание — сила воина»' }
+  };
+
   const divisionTasks: Record<string, string[]> = {
     'Штаб В/Ч': ['Управление всеми подразделениями В/Ч', 'Координация действий формирований', 'Принятие стратегических решений', 'Контроль состояния внутренней службы'],
     'ВП': ['Патрулирование территории части и гарнизона', 'Пресечение самоволок и нарушений устава', 'Контроль пропускного режима на КПП', 'Гарнизонная и караульная служба'],
@@ -157,9 +267,11 @@ export default function App() {
           <div className="flex items-center gap-4">
             <div className="relative shrink-0">
               <img 
-                src="./emblem.png" 
+                src={emblemUrl} 
                 alt="Герб ВС Региональной Федерации" 
-                className="h-20 w-20 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                onClick={handleEmblemClick}
+                className="h-20 w-20 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer select-none"
+                draggable={false}
               />
             </div>
             <div className="text-center md:text-left">
@@ -176,12 +288,49 @@ export default function App() {
           </div>
 
           <div className="flex flex-col items-center md:items-end gap-2">
+            {/* Виджет авторизованного пользователя — видим только своим */}
+            {staffAuthorized && discordUser && (
+              <div className="flex items-center gap-2">
+                {/* Информация о пользователе с аватаром Discord */}
+                <div className="flex items-center gap-2 bg-slate-900 border border-emerald-500/30 rounded-lg pl-1 pr-3 py-1">
+                  <img
+                    src={discordUser.avatarUrl}
+                    alt={discordUser.displayName}
+                    className="h-7 w-7 rounded-md object-cover border border-emerald-500/30"
+                  />
+                  <div className="text-left">
+                    <div className="text-[11px] font-oswald font-bold text-white leading-tight uppercase">
+                      {discordUser.displayName}
+                    </div>
+                    <div className="text-[9px] font-mono-military text-emerald-400 leading-tight">
+                      {discordUser.rank?.name ?? 'Военнослужащий'}
+                      {discordUser.division ? ` • ${discordUser.division.code}` : ''}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={openStaffPortal}
+                  className="group flex items-center gap-2 font-oswald font-bold text-xs uppercase tracking-wider px-4 py-2 rounded-lg shadow-lg border transition bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white border-emerald-400/40"
+                  title="Открыть закрытый портал ЕИС МО РФ"
+                >
+                  <LockIcon className="h-4 w-4" />
+                  ЕИС МО
+                  <ExternalLink className="h-3 w-3 opacity-70 group-hover:opacity-100" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="text-[10px] font-mono-military text-slate-500 hover:text-red-400 transition px-2 py-2 border border-slate-800 rounded-lg hover:border-red-500/40"
+                  title="Выйти из аккаунта"
+                >
+                  Выйти
+                </button>
+              </div>
+            )}
             <span className="text-xs font-mono-military text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1.5 rounded-md flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               ПРИЗЫВ ОТКРЫТ • НАБОР АКТИВЕН
-            </span>
-            <span className="text-[10px] font-mono-military text-slate-500 uppercase tracking-wider">
-              «Служу Региональной Федерации!»
             </span>
           </div>
         </div>
@@ -230,7 +379,7 @@ export default function App() {
               <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-900 border border-emerald-500/20 p-6 rounded-2xl relative overflow-hidden">
                 <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-emerald-500/10 rounded-full filter blur-3xl" />
                 <img 
-                  src="./emblem.png" 
+                  src={emblemUrl} 
                   alt="" 
                   className="absolute -right-8 top-1/2 -translate-y-1/2 h-48 w-48 object-contain opacity-10"
                 />
@@ -306,6 +455,60 @@ export default function App() {
             {/* Right Column (Discord & Simulated Quick Apply) */}
             <div className="space-y-6">
               
+              {/* ЕИС МО — карточка видна ТОЛЬКО авторизованным военнослужащим. */}
+              {/* Посторонние этот блок не видят вообще. Свои входят через 5 кликов на герб или Ctrl+Shift+L. */}
+              {staffAuthorized && (
+                <div className="bg-gradient-to-br from-emerald-950/60 via-slate-900 to-slate-900 border border-emerald-500/30 p-5 rounded-2xl relative overflow-hidden">
+                  <div className="absolute -top-8 -right-8 w-32 h-32 bg-emerald-500/10 rounded-full filter blur-2xl" />
+                  <div className="absolute top-3 right-3 text-[9px] font-mono-military bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded uppercase font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Доступ открыт
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-3 relative">
+                    <div className="p-2 bg-emerald-500/15 border border-emerald-500/30 rounded-lg">
+                      <KeyRound className="h-5 w-5 text-emerald-400" />
+                    </div>
+                    <h3 className="text-base font-oswald font-bold uppercase tracking-wider text-white">
+                      ЕИС МО РФ
+                    </h3>
+                  </div>
+
+                  <p className="text-xs text-slate-300 leading-relaxed mb-4 relative">
+                    Единая Информационная Система Министерства Обороны. Здесь хранятся:
+                  </p>
+
+                  <ul className="text-xs text-slate-300 space-y-1.5 mb-4 relative">
+                    <li className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      Личные дела военнослужащих
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <GraduationCap className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      Дипломы и сертификаты Академии
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Award className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      Награды, выговоры, приказы
+                    </li>
+                  </ul>
+
+                  <button
+                    type="button"
+                    onClick={openStaffPortal}
+                    className="w-full font-oswald font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-lg border relative bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white border-emerald-400/40"
+                  >
+                    <LockIcon className="h-4 w-4" />
+                    Войти в ЕИС
+                    <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                  </button>
+
+                  <p className="text-[10px] text-emerald-400/70 font-mono-military mt-3 leading-relaxed text-center relative">
+                    ✓ Авторизация подтверждена. Доступ открыт.
+                  </p>
+                </div>
+              )}
+
               {/* DISCORD SYNC CARD */}
               <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full filter blur-xl" />
@@ -445,14 +648,37 @@ export default function App() {
             
             {/* Statute sidebar selection */}
             <div className="space-y-2">
-              <h3 className="text-xs font-mono-military text-slate-500 uppercase tracking-widest px-2 mb-3">Содержание уставов</h3>
-              {STATUTES.map((stat) => (
+              <h3 className="text-xs font-mono-military text-emerald-400 uppercase tracking-widest px-2 mb-2 flex items-center gap-2">
+                <span className="h-px flex-1 bg-emerald-500/30" />
+                Устав внутренней службы
+                <span className="h-px flex-1 bg-emerald-500/30" />
+              </h3>
+              {STATUTES.filter(s => !s.id.startsWith('disc-')).map((stat) => (
                 <button 
                   key={stat.id}
                   onClick={() => { setSelectedStatute(stat.id); triggerSound('click'); }}
                   className={`w-full text-left py-3 px-4 rounded-xl border font-oswald font-semibold uppercase text-xs tracking-wider transition ${
                     selectedStatute === stat.id 
                       ? 'bg-gradient-to-r from-emerald-700 to-emerald-900 text-white border-emerald-500/30' 
+                      : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:bg-slate-850 hover:text-slate-200'
+                  }`}
+                >
+                  {stat.title}
+                </button>
+              ))}
+
+              <h3 className="text-xs font-mono-military text-amber-400 uppercase tracking-widest px-2 mb-2 mt-6 flex items-center gap-2">
+                <span className="h-px flex-1 bg-amber-500/30" />
+                Дисциплинарный устав
+                <span className="h-px flex-1 bg-amber-500/30" />
+              </h3>
+              {STATUTES.filter(s => s.id.startsWith('disc-')).map((stat) => (
+                <button 
+                  key={stat.id}
+                  onClick={() => { setSelectedStatute(stat.id); triggerSound('click'); }}
+                  className={`w-full text-left py-3 px-4 rounded-xl border font-oswald font-semibold uppercase text-xs tracking-wider transition ${
+                    selectedStatute === stat.id 
+                      ? 'bg-gradient-to-r from-amber-700 to-amber-900 text-white border-amber-500/40' 
                       : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:bg-slate-850 hover:text-slate-200'
                   }`}
                 >
@@ -622,83 +848,151 @@ export default function App() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {divisionEntries.map(([code, division]) => {
                 const members = INITIAL_SOLDIERS.filter(soldier => soldier.division === code);
                 const commander = members.length
                   ? members.reduce((highest, soldier) => soldier.rankId > highest.rankId ? soldier : highest, members[0])
                   : null;
                 const commanderRank = commander ? RANKS.find(rank => rank.id === commander.rankId)?.name : null;
+                const theme = divisionTheme[code] ?? { accent: 'text-emerald-300', bg: 'from-emerald-950/80 via-slate-950 to-slate-950', ring: 'border-emerald-500/40', glow: 'shadow-emerald-500/20', label: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', motto: '' };
 
                 return (
-                  <div key={code} className="bg-slate-900/90 border border-slate-800 hover:border-emerald-600/40 transition rounded-2xl overflow-hidden">
-                    {division.image && (
-                      <div className="relative h-64 border-b border-slate-800 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.12),rgba(2,6,23,0.95)_62%)]">
-                        <img
-                          src={division.image}
-                          alt={division.name}
-                          className="mx-auto h-full w-full object-contain p-5 drop-shadow-[0_0_22px_rgba(0,0,0,0.65)]"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/20 pointer-events-none" />
-                        <div className="absolute bottom-3 left-4 text-[10px] font-mono-military uppercase tracking-widest text-emerald-300/90">
-                          В/Ч №7863 • {code}
-                        </div>
-                      </div>
-                    )}
-                    <div className="p-5 space-y-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                          <span className="font-oswald font-bold text-emerald-400 text-sm">{code}</span>
-                        </div>
-                        <div>
-                          <h4 className="font-oswald font-bold text-base text-white uppercase tracking-wide leading-tight">
-                            {division.name}
-                          </h4>
-                          <p className="text-xs text-slate-400 leading-relaxed mt-1">
-                            {division.desc}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-mono-military text-slate-400 bg-slate-950 border border-slate-800 px-2 py-1 rounded shrink-0">
-                        {members.length} чел.
+                  <div
+                    key={code}
+                    className={`group relative bg-gradient-to-br ${theme.bg} border ${theme.ring} rounded-2xl overflow-hidden shadow-2xl ${theme.glow} hover:scale-[1.01] transition-transform duration-300`}
+                  >
+                    {/* Декоративные геральдические элементы */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                      <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-current opacity-[0.04]" />
+                      <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-current opacity-[0.03]" />
+                      {/* Декоративные «лампасы» по краям */}
+                      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-50`} />
+                      <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-30`} />
+                    </div>
+
+                    {/* Бейдж "В/Ч 7863 • КОД" сверху */}
+                    <div className="relative flex items-center justify-between px-6 pt-5">
+                      <span className={`text-[10px] font-mono-military uppercase tracking-[0.3em] ${theme.accent} font-bold`}>
+                        В/Ч №7863
+                      </span>
+                      <span className={`text-[10px] font-mono-military uppercase tracking-widest px-2.5 py-1 rounded-md border ${theme.label} font-bold`}>
+                        {code}
                       </span>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="bg-slate-950 border border-slate-850 rounded-xl p-3">
-                        <div className="text-[10px] font-mono-military text-slate-500 uppercase mb-2">Основные задачи</div>
-                        <ul className="space-y-1.5 text-xs text-slate-300">
-                          {(divisionTasks[code] ?? []).map(task => (
-                            <li key={task} className="flex gap-2">
-                              <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                              <span>{task}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                    {/* Главная зона: эмблема по центру */}
+                    <div className="relative px-6 pt-6 pb-4 flex flex-col items-center text-center">
+                      {division.image ? (
+                        <div className={`relative w-36 h-44 mb-3 flex items-center justify-center`}>
+                          {/* Световое пятно за эмблемой */}
+                          <div className={`absolute inset-0 rounded-full bg-current opacity-20 blur-2xl ${theme.accent}`} />
+                          <img
+                            src={division.image}
+                            alt={division.name}
+                            className="relative max-h-full max-w-full object-contain drop-shadow-2xl"
+                          />
+                        </div>
+                      ) : (
+                        <div className={`w-36 h-44 mb-3 rounded-2xl bg-slate-900/60 border-2 ${theme.ring} flex items-center justify-center`}>
+                          <span className={`font-oswald font-black text-5xl ${theme.accent}`}>{code}</span>
+                        </div>
+                      )}
 
-                      <div className="bg-slate-950 border border-slate-850 rounded-xl p-3 space-y-3">
-                        <div>
-                          <div className="text-[10px] font-mono-military text-slate-500 uppercase mb-1">Куратор / старший</div>
-                          {commander ? (
-                            <div>
-                              <div className="text-xs font-oswald font-bold text-slate-200 uppercase">{commander.name}</div>
-                              <div className="text-[10px] font-mono-military text-emerald-400">{commanderRank}</div>
-                            </div>
-                          ) : (
-                            <div className="text-xs text-slate-500">Не назначен</div>
-                          )}
+                      {/* Название подразделения */}
+                      <h3 className="font-oswald font-black text-base md:text-lg text-white uppercase tracking-wider leading-tight max-w-md">
+                        {division.name}
+                      </h3>
+
+                      {/* Девиз */}
+                      {theme.motto && (
+                        <div className={`mt-3 flex items-center gap-3 ${theme.accent}`}>
+                          <span className="h-px w-8 bg-current opacity-50" />
+                          <span className="font-oswald italic text-sm tracking-wider">{theme.motto}</span>
+                          <span className="h-px w-8 bg-current opacity-50" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Описание */}
+                    <div className="relative px-6 pb-5">
+                      <p className="text-[13px] text-slate-300 leading-relaxed text-center">
+                        {division.desc}
+                      </p>
+                    </div>
+
+                    {/* Информационная панель */}
+                    <div className="relative bg-slate-950/70 border-t border-slate-800/80 backdrop-blur-sm">
+                      <div className="grid grid-cols-3 divide-x divide-slate-800/80">
+                        {/* Личный состав */}
+                        <div className="p-4 text-center">
+                          <Users className={`h-4 w-4 ${theme.accent} mx-auto mb-1`} />
+                          <div className={`font-oswald font-black text-2xl ${theme.accent}`}>{members.length}</div>
+                          <div className="text-[9px] text-slate-500 font-mono-military uppercase tracking-wider mt-0.5">
+                            военнослужащих
+                          </div>
                         </div>
 
-                        <div className="border-t border-slate-850 pt-3">
-                          <div className="text-[10px] font-mono-military text-slate-500 uppercase mb-1">Для новичка</div>
-                          <p className="text-xs text-slate-300 leading-relaxed">
-                            После прохождения КМБ можно попросить распределение в это подразделение через рапорт или на собеседовании у офицера.
+                        {/* Командир */}
+                        <div className="p-4 text-center">
+                          <Award className={`h-4 w-4 ${theme.accent} mx-auto mb-1`} />
+                          {commander ? (
+                            <>
+                              <div className="font-oswald font-bold text-[11px] text-white uppercase leading-tight truncate" title={commander.name}>
+                                {commander.name.split(' ').slice(0, 2).join(' ')}
+                              </div>
+                              <div className={`text-[9px] font-mono-military ${theme.accent} mt-0.5 truncate`}>
+                                {commanderRank}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-[10px] text-slate-500 font-mono-military mt-1">
+                              ВАКАНТНО
+                            </div>
+                          )}
+                          <div className="text-[9px] text-slate-500 font-mono-military uppercase tracking-wider mt-0.5">
+                            командование
+                          </div>
+                        </div>
+
+                        {/* Статус */}
+                        <div className="p-4 text-center">
+                          <CheckCircle className={`h-4 w-4 ${theme.accent} mx-auto mb-1`} />
+                          <div className={`font-oswald font-black text-sm ${theme.accent} flex items-center justify-center gap-1.5`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                            ДЕЙСТВУЕТ
+                          </div>
+                          <div className="text-[9px] text-slate-500 font-mono-military uppercase tracking-wider mt-0.5">
+                            боеготовность
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Задачи и инфо для новичка */}
+                      <div className="grid md:grid-cols-2 gap-px bg-slate-800/80">
+                        <div className="bg-slate-950/80 p-4">
+                          <div className={`text-[10px] font-mono-military uppercase tracking-widest font-bold mb-2.5 ${theme.accent}`}>
+                            ▸ Основные задачи
+                          </div>
+                          <ul className="space-y-1.5 text-[11px] text-slate-300">
+                            {(divisionTasks[code] ?? []).map(task => (
+                              <li key={task} className="flex gap-2 leading-snug">
+                                <span className={`${theme.accent} font-bold shrink-0`}>•</span>
+                                <span>{task}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div className="bg-slate-950/80 p-4">
+                          <div className={`text-[10px] font-mono-military uppercase tracking-widest font-bold mb-2.5 ${theme.accent}`}>
+                            ▸ Для новобранца
+                          </div>
+                          <p className="text-[11px] text-slate-300 leading-snug">
+                            После прохождения КМБ вы можете подать рапорт о распределении в это подразделение через своего непосредственного начальника или на собеседовании у офицера.
                           </p>
                         </div>
                       </div>
-                    </div>
                     </div>
                   </div>
                 );
@@ -848,11 +1142,74 @@ export default function App() {
 
       </main>
 
+      {/* --- LOGIN MODAL --- */}
+      {showLoginModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setShowLoginModal(false)}
+        >
+          <div
+            className="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowLoginModal(false)}
+              className="absolute top-3 right-3 text-slate-500 hover:text-white transition"
+              title="Закрыть"
+            >
+              <XCircle className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-amber-500/15 border border-amber-500/30 rounded-xl">
+                <LockIcon className="h-6 w-6 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-oswald font-bold text-lg text-white uppercase tracking-wide">
+                  ЕИС МО РФ
+                </h3>
+                <p className="text-[11px] font-mono-military text-slate-400 uppercase">
+                  Единая Информационная Система МО
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              Доступ к ЕИС МО РФ открыт только военнослужащим В/Ч 7863. Войдите через свой Discord-аккаунт — мы автоматически проверим, состоите ли вы в нашем Discord-сервере.
+            </p>
+
+            {discordUser && !discordUser.isMember ? (
+              <div className="bg-red-950/40 border border-red-500/30 rounded-lg p-3 mb-3">
+                <p className="text-xs text-red-300 font-mono-military leading-relaxed">
+                  ❌ Вы вошли как <strong>{discordUser.displayName}</strong>, но не состоите в Discord-сервере В/Ч 7863. Обратитесь к командованию для добавления.
+                </p>
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={handleDiscordLogin}
+              className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white font-oswald font-bold py-3 rounded-lg text-sm uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-lg"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+              </svg>
+              Войти через Discord
+            </button>
+
+            <p className="text-[10px] text-slate-500 font-mono-military text-center pt-3 leading-relaxed">
+              При входе мы запрашиваем: имя, аватар и список ваших ролей на сервере. Discord-пароль остаётся у вас — мы его не видим.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* --- FOOTER --- */}
       <footer className="max-w-7xl mx-auto px-4 mt-12 border-t border-emerald-900/40 pt-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-mono-military text-slate-500">
           <div className="flex items-center gap-3">
-            <img src="./emblem.png" alt="" className="h-10 w-10 object-contain opacity-70" />
+            <img src={emblemUrl} alt="" className="h-10 w-10 object-contain opacity-70" />
             <div>
               <p className="text-slate-400">© 2026 МИНИСТЕРСТВО ОБОРОНЫ РЕГИОНАЛЬНОЙ ФЕДЕРАЦИИ</p>
               <p className="text-[10px] mt-0.5">Воинская часть №7863 • Информационный портал для призывников и новобранцев</p>
