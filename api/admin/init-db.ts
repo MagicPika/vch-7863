@@ -10,7 +10,7 @@ import { parseRequestUrl } from '../_lib/url.js';
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req: Request) {
-  const url = new URL(req.url);
+  const url = parseRequestUrl(req);
   const secret = url.searchParams.get('secret');
 
   const expectedSecret = process.env.MIGRATION_SECRET || 'vch7863-init-please-change-me';
