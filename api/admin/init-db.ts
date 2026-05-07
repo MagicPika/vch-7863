@@ -4,7 +4,7 @@
 // Запустить ОДИН РАЗ после первого деплоя.
 // Сам выполнит SQL для создания всех таблиц.
 // =====================================================
-import { prisma } from '../_lib/prisma';
+import { prisma } from '../_lib/prisma.js';
 
 export const config = { runtime: 'nodejs' };
 
