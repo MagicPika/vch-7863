@@ -3,11 +3,12 @@
 // =====================================================
 import { prisma } from '../_lib/prisma.js';
 import { getUserFromRequest } from '../_lib/auth.js';
+import { parseRequestUrl } from '../_lib/url.js';
 
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req: Request) {
-  const url = new URL(req.url);
+  const url = parseRequestUrl(req);
   const segments = url.pathname.split('/').filter(Boolean);
   const id = segments[segments.length - 1];
 
