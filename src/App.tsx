@@ -8,6 +8,7 @@ import {
   VolumeX,
   CheckCircle,
   XCircle,
+  AlertTriangle,
   UserCheck,
   BookOpen,
   MessageSquare,
@@ -36,7 +37,7 @@ import { buildDiscordUser, type DiscordUser } from './config/discord';
 const STAFF_PORTAL_URL = 'https://netd08800-commits.github.io/vooruzhennye-sily/';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'statutes' | 'roster' | 'divisions' | 'test' | 'guide' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'statutes' | 'roster' | 'divisions' | 'test' | 'guide'>('home');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   // 🔐 Discord-авторизация
@@ -45,6 +46,27 @@ export default function App() {
 
   // Флаг "пользователь авторизован и состоит в нашем сервере"
   const staffAuthorized = !!discordUser?.isMember;
+
+  // 👤 Открытый профиль (для модального окна)
+  const [profileSoldierId, setProfileSoldierId] = useState<string | null>(null);
+  const [profileMode, setProfileMode] = useState<'soldier' | 'me'>('soldier');
+
+  const openSoldierProfile = (soldierId: string) => {
+    setProfileSoldierId(soldierId);
+    setProfileMode('soldier');
+    triggerSound('click');
+  };
+
+  const openMyProfile = () => {
+    setProfileMode('me');
+    setProfileSoldierId(null);
+    triggerSound('click');
+  };
+
+  const closeProfile = () => {
+    setProfileSoldierId(null);
+    setProfileMode('soldier');
+  };
 
   // 🕵️ Секретная активация: 5 кликов по гербу или комбинация Ctrl+Shift+L
   const [emblemClicks, setEmblemClicks] = useState(0);
@@ -291,8 +313,13 @@ export default function App() {
             {/* Виджет авторизованного пользователя — видим только своим */}
             {staffAuthorized && discordUser && (
               <div className="flex items-center gap-2">
-                {/* Информация о пользователе с аватаром Discord */}
-                <div className="flex items-center gap-2 bg-slate-900 border border-emerald-500/30 rounded-lg pl-1 pr-3 py-1">
+                {/* Информация о пользователе с аватаром Discord — клик открывает профиль */}
+                <button
+                  type="button"
+                  onClick={openMyProfile}
+                  className="flex items-center gap-2 bg-slate-900 border border-emerald-500/30 hover:border-emerald-400 hover:bg-slate-800 rounded-lg pl-1 pr-3 py-1 transition cursor-pointer"
+                  title="Открыть мой профиль"
+                >
                   <img
                     src={discordUser.avatarUrl}
                     alt={discordUser.displayName}
@@ -307,7 +334,7 @@ export default function App() {
                       {discordUser.division ? ` • ${discordUser.division.code}` : ''}
                     </div>
                   </div>
-                </div>
+                </button>
                 <button
                   type="button"
                   onClick={openStaffPortal}
@@ -346,7 +373,6 @@ export default function App() {
             { key: 'roster', icon: <Users className="h-4 w-4" />, label: 'Личный состав' },
             { key: 'divisions', icon: <Shield className="h-4 w-4" />, label: 'Подразделения' },
             { key: 'test', icon: <Award className="h-4 w-4" />, label: 'РП-Тренажер' },
-            ...(staffAuthorized ? [{ key: 'profile', icon: <UserCheck className="h-4 w-4" />, label: 'Личный кабинет' }] : []),
           ].map(t => (
             <button 
               key={t.key}
@@ -766,9 +792,11 @@ export default function App() {
                 const isCommander = soldier.rankId >= 12;
 
                 return (
-                  <div 
+                  <button 
                     key={soldier.id}
-                    className={`bg-slate-900/90 border rounded-2xl p-4 flex flex-col justify-between transition relative overflow-hidden hover:border-emerald-500/30 ${
+                    type="button"
+                    onClick={() => openSoldierProfile(soldier.id)}
+                    className={`text-left bg-slate-900/90 border rounded-2xl p-4 flex flex-col justify-between transition relative overflow-hidden hover:border-emerald-500/60 hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/10 cursor-pointer group ${
                       isCommander ? 'border-emerald-500/30' : 'border-slate-800/80'
                     }`}
                   >
@@ -819,8 +847,11 @@ export default function App() {
                           {soldier.status}
                         </span>
                       </div>
+                      <div className="text-center text-[9px] font-mono-military text-emerald-400 opacity-0 group-hover:opacity-100 transition pt-1 uppercase tracking-wider">
+                        ▸ Открыть личное дело
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -1141,208 +1172,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ======================================= */}
-        {/*       7. TAB: PROFILE (личный кабинет)  */}
-        {/* ======================================= */}
-        {activeTab === 'profile' && discordUser && staffAuthorized && (
-          <div className="space-y-6">
-            {/* Главная карточка профиля */}
-            <div className="relative bg-gradient-to-br from-emerald-950/60 via-slate-900 to-slate-950 border border-emerald-500/30 rounded-2xl overflow-hidden shadow-2xl shadow-emerald-500/10">
-              {/* Декоративный фон */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl" />
-                <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-emerald-500/5 blur-3xl" />
-                <img src={emblemUrl} alt="" className="absolute -right-16 top-1/2 -translate-y-1/2 h-80 w-80 object-contain opacity-[0.04]" />
-              </div>
-
-              <div className="relative p-6 md:p-8">
-                <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
-                  {/* Аватар */}
-                  <div className="relative shrink-0">
-                    <div className="absolute inset-0 bg-emerald-500/30 blur-xl rounded-2xl" />
-                    <img
-                      src={discordUser.avatarUrl}
-                      alt={discordUser.displayName}
-                      className="relative w-32 h-32 md:w-36 md:h-36 rounded-2xl border-2 border-emerald-400/60 object-cover shadow-2xl"
-                    />
-                    {discordUser.isCommander && (
-                      <div className="absolute -top-2 -right-2 bg-amber-500 text-slate-950 text-[9px] font-mono-military font-black px-2 py-0.5 rounded shadow-lg uppercase tracking-wider">
-                        ⭐ Командир
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Основная информация */}
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="text-[10px] font-mono-military text-emerald-300/80 uppercase tracking-[0.3em] mb-1">
-                      Личное дело военнослужащего
-                    </div>
-                    <h1 className="font-oswald font-black text-2xl md:text-4xl text-white uppercase leading-tight">
-                      {discordUser.displayName}
-                    </h1>
-                    {discordUser.rank && (
-                      <div className="mt-2 inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 rounded-lg">
-                        <Award className="h-4 w-4 text-emerald-400" />
-                        <span className="font-oswald font-bold text-base text-emerald-300 uppercase tracking-wider">
-                          {discordUser.rank.name}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
-                      {/* Подразделение */}
-                      <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
-                        <div className="text-[9px] font-mono-military text-slate-500 uppercase tracking-widest mb-1">
-                          Подразделение
-                        </div>
-                        <div className="font-oswald font-bold text-sm text-white">
-                          {discordUser.division?.name ?? 'Не назначено'}
-                        </div>
-                      </div>
-
-                      {/* Личный номер */}
-                      <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
-                        <div className="text-[9px] font-mono-military text-slate-500 uppercase tracking-widest mb-1">
-                          Личный номер
-                        </div>
-                        <div className="font-mono-military font-bold text-sm text-emerald-400">
-                          7863-{discordUser.id.slice(-6)}
-                        </div>
-                      </div>
-
-                      {/* Discord */}
-                      <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
-                        <div className="text-[9px] font-mono-military text-slate-500 uppercase tracking-widest mb-1">
-                          Discord
-                        </div>
-                        <div className="font-mono-military text-sm text-slate-300 truncate" title={`@${discordUser.username}`}>
-                          @{discordUser.username}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Кнопки действий */}
-                    <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
-                      <button
-                        onClick={openStaffPortal}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-oswald font-bold px-4 py-2 rounded-lg text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-lg"
-                      >
-                        <LockIcon className="h-4 w-4" />
-                        Открыть ЕИС МО
-                      </button>
-                      <button
-                        onClick={handleLogout}
-                        className="bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white font-mono-military px-4 py-2 rounded-lg text-xs uppercase transition border border-slate-700 hover:border-red-500"
-                      >
-                        Выйти
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Статистические карточки */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 text-center">
-                <Award className="h-6 w-6 text-amber-400 mx-auto mb-1" />
-                <div className="font-oswald font-black text-3xl text-white">0</div>
-                <div className="text-[10px] font-mono-military text-slate-500 uppercase tracking-wider">Награды</div>
-              </div>
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 text-center">
-                <FileText className="h-6 w-6 text-emerald-400 mx-auto mb-1" />
-                <div className="font-oswald font-black text-3xl text-white">0</div>
-                <div className="text-[10px] font-mono-military text-slate-500 uppercase tracking-wider">Дипломы</div>
-              </div>
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 text-center">
-                <XCircle className="h-6 w-6 text-red-400 mx-auto mb-1" />
-                <div className="font-oswald font-black text-3xl text-white">0</div>
-                <div className="text-[10px] font-mono-military text-slate-500 uppercase tracking-wider">Выговоры</div>
-              </div>
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 text-center">
-                <CheckCircle className="h-6 w-6 text-blue-400 mx-auto mb-1" />
-                <div className="font-oswald font-black text-3xl text-white">—</div>
-                <div className="text-[10px] font-mono-military text-slate-500 uppercase tracking-wider">Дней службы</div>
-              </div>
-            </div>
-
-            {/* Награды и дипломы */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <Award className="h-5 w-5 text-amber-400" />
-                  <h3 className="font-oswald font-bold text-base text-white uppercase tracking-wider">Мои награды</h3>
-                </div>
-                <div className="bg-slate-950/60 border border-dashed border-slate-700 rounded-xl p-6 text-center">
-                  <Award className="h-10 w-10 text-slate-700 mx-auto mb-2" />
-                  <p className="text-xs text-slate-500 font-mono-military">
-                    У вас пока нет наград.<br />
-                    Награды выдаёт командование за заслуги в службе.
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <FileText className="h-5 w-5 text-emerald-400" />
-                  <h3 className="font-oswald font-bold text-base text-white uppercase tracking-wider">Мои дипломы</h3>
-                </div>
-                <div className="bg-slate-950/60 border border-dashed border-slate-700 rounded-xl p-6 text-center">
-                  <FileText className="h-10 w-10 text-slate-700 mx-auto mb-2" />
-                  <p className="text-xs text-slate-500 font-mono-military">
-                    У вас пока нет дипломов.<br />
-                    Дипломы выдаёт Военная Академия после прохождения курсов.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* История службы */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Shield className="h-5 w-5 text-emerald-400" />
-                <h3 className="font-oswald font-bold text-base text-white uppercase tracking-wider">История службы</h3>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 bg-slate-950/60 border border-emerald-500/20 rounded-xl p-3">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500 mt-1 shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                  <div className="flex-1">
-                    <div className="font-oswald font-bold text-sm text-white">
-                      {discordUser.rank?.name ?? 'Военнослужащий'} {discordUser.division ? `• ${discordUser.division.name}` : ''}
-                    </div>
-                    <div className="text-[10px] font-mono-military text-emerald-400">Текущее звание и подразделение</div>
-                  </div>
-                </div>
-                <div className="text-center text-[11px] text-slate-500 font-mono-military py-3">
-                  История повышений и переводов появится здесь по мере службы
-                </div>
-              </div>
-            </div>
-
-            {/* Список ваших Discord-ролей (для прозрачности) */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <MessageSquare className="h-5 w-5 text-indigo-400" />
-                <h3 className="font-oswald font-bold text-base text-white uppercase tracking-wider">Ваши роли в Discord</h3>
-              </div>
-              <p className="text-[11px] text-slate-400 font-mono-military mb-3">
-                Звание и подразделение определяются по этим ролям. Если хотите изменить — обратитесь к командованию.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {discordUser.roleIds.length === 0 ? (
-                  <span className="text-xs text-slate-500 italic">Ролей нет</span>
-                ) : (
-                  discordUser.roleIds.map(rid => (
-                    <span key={rid} className="bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-mono-military px-2.5 py-1 rounded">
-                      {rid}
-                    </span>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
       </main>
 
       {/* --- LOGIN MODAL --- */}
@@ -1407,6 +1236,308 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* --- ЛИЧНОЕ ДЕЛО / ПРОФИЛЬ --- */}
+      {(profileSoldierId || profileMode === 'me') && (() => {
+        // Определяем кого показываем
+        let viewSoldier: typeof INITIAL_SOLDIERS[0] | null = null;
+        let viewRank: typeof RANKS[0] | undefined;
+        let isOwn = false;
+        let useDiscord = false;
+
+        if (profileMode === 'me' && discordUser?.isMember) {
+          // Свой профиль через Discord
+          useDiscord = true;
+          isOwn = true;
+          // Пытаемся найти соответствующую запись по имени Discord
+          viewSoldier = INITIAL_SOLDIERS.find(s =>
+            s.discord?.includes(discordUser.username) ||
+            s.name.toLowerCase().includes((discordUser.globalName ?? '').toLowerCase())
+          ) ?? null;
+        } else if (profileSoldierId) {
+          viewSoldier = INITIAL_SOLDIERS.find(s => s.id === profileSoldierId) ?? null;
+          if (viewSoldier && discordUser?.isMember) {
+            // Если смотрим своё личное дело
+            if (viewSoldier.discord?.includes(discordUser.username)) {
+              isOwn = true;
+            }
+          }
+        }
+
+        if (viewSoldier) {
+          viewRank = RANKS.find(r => r.id === viewSoldier!.rankId);
+        }
+
+        // Данные для отображения (Discord перебивает запись из mockData для своего профиля)
+        const displayName = useDiscord && discordUser
+          ? discordUser.displayName
+          : viewSoldier?.name ?? 'Военнослужащий';
+        const displayAvatar = useDiscord && discordUser
+          ? discordUser.avatarUrl
+          : viewSoldier?.avatar;
+        const displayRank = useDiscord && discordUser?.rank
+          ? discordUser.rank.name
+          : viewRank?.name ?? '—';
+        const displayDivision = useDiscord && discordUser?.division
+          ? discordUser.division.code
+          : viewSoldier?.division ?? '—';
+        const displayPosition = viewSoldier?.position;
+        const displayDiscord = viewSoldier?.discord ?? (useDiscord && discordUser ? `@${discordUser.username}` : null);
+        const displayJoinDate = viewSoldier?.joinDate ?? '—';
+        const displayStatus = viewSoldier?.status ?? 'В СТРОЮ';
+        const displayMedals = viewSoldier?.medals ?? [];
+        const displayWarnings = viewSoldier?.warnings ?? 0;
+
+        // Личный номер (генерируем из ID)
+        const personalNumber = viewSoldier
+          ? `7863-${viewSoldier.id.toUpperCase().padStart(4, '0')}`
+          : '7863-XXXX';
+
+        // Срок службы
+        const calcServiceTime = (date: string) => {
+          if (date === '—') return '—';
+          const start = new Date(date);
+          const now = new Date();
+          const diffMonths = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+          const years = Math.floor(diffMonths / 12);
+          const months = diffMonths % 12;
+          const yStr = years > 0 ? `${years} ${years === 1 ? 'год' : years < 5 ? 'года' : 'лет'}` : '';
+          const mStr = months > 0 ? `${months} мес.` : '';
+          return [yStr, mStr].filter(Boolean).join(' ') || '< 1 мес.';
+        };
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-start md:items-center justify-center bg-black/85 backdrop-blur-sm p-4 overflow-y-auto"
+            onClick={closeProfile}
+          >
+            <div
+              className="bg-slate-900 border border-emerald-500/30 rounded-2xl max-w-3xl w-full shadow-2xl my-8 overflow-hidden relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Кнопка закрытия */}
+              <button
+                type="button"
+                onClick={closeProfile}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white transition z-10 bg-slate-950/60 rounded-full p-1.5"
+                title="Закрыть"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+
+              {/* Шапка с фоном */}
+              <div className="relative bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 px-6 pt-8 pb-6 border-b border-emerald-900/40">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_60%)] pointer-events-none" />
+                <div className="absolute top-3 left-4 text-[10px] font-mono-military uppercase tracking-[0.3em] text-emerald-400/70 font-bold">
+                  ЛИЧНОЕ ДЕЛО • В/Ч 7863
+                </div>
+
+                <div className="relative flex flex-col md:flex-row items-center md:items-start gap-5">
+                  {/* Аватар */}
+                  <div className="relative">
+                    <img
+                      src={displayAvatar}
+                      alt={displayName}
+                      className="w-28 h-28 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-lg shadow-emerald-500/20"
+                    />
+                    {useDiscord && (
+                      <div className="absolute -bottom-2 -right-2 bg-[#5865F2] text-white text-[9px] font-bold px-2 py-0.5 rounded-md uppercase shadow-lg">
+                        Discord
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Основная инфа */}
+                  <div className="flex-1 text-center md:text-left space-y-1.5">
+                    <div className="font-mono-military text-[10px] uppercase tracking-widest text-emerald-400">
+                      {displayRank}
+                    </div>
+                    <h2 className="font-oswald font-black text-2xl md:text-3xl text-white uppercase tracking-wide leading-tight">
+                      {displayName}
+                    </h2>
+                    {displayPosition && (
+                      <div className="text-sm text-amber-300 font-oswald font-medium">
+                        {displayPosition}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-2">
+                      <span className="text-[10px] font-mono-military bg-slate-800 border border-slate-700 px-2 py-0.5 rounded uppercase text-emerald-300">
+                        🛡️ {displayDivision}
+                      </span>
+                      <span className={`text-[10px] font-mono-military border px-2 py-0.5 rounded uppercase font-bold ${
+                        displayStatus === 'В СТРОЮ'
+                          ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                          : displayStatus === 'ОТПУСК'
+                          ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                          : 'bg-slate-700 border-slate-600 text-slate-300'
+                      }`}>
+                        ● {displayStatus}
+                      </span>
+                      {isOwn && (
+                        <span className="text-[10px] font-mono-military bg-blue-500/15 border border-blue-500/30 text-blue-300 px-2 py-0.5 rounded uppercase font-bold">
+                          ✓ Это вы
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Тело: ключевая инфа в 3 колонки */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-slate-800">
+                <div className="bg-slate-950 p-4 text-center">
+                  <div className="text-[10px] font-mono-military text-slate-500 uppercase mb-1">Личный номер</div>
+                  <div className="font-mono-military font-bold text-emerald-400 text-sm">{personalNumber}</div>
+                </div>
+                <div className="bg-slate-950 p-4 text-center">
+                  <div className="text-[10px] font-mono-military text-slate-500 uppercase mb-1">На службе</div>
+                  <div className="font-oswald font-bold text-white text-sm">{calcServiceTime(displayJoinDate)}</div>
+                  <div className="text-[9px] text-slate-500 font-mono-military mt-0.5">с {displayJoinDate}</div>
+                </div>
+                <div className="bg-slate-950 p-4 text-center">
+                  <div className="text-[10px] font-mono-military text-slate-500 uppercase mb-1">Discord</div>
+                  {displayDiscord ? (
+                    <div className="text-[11px] text-indigo-400 font-mono-military truncate" title={displayDiscord}>
+                      {displayDiscord}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-slate-500 font-mono-military">не указан</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Награды */}
+              <div className="p-5 border-t border-slate-800">
+                <h3 className="font-oswald font-bold text-base text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Award className="h-4 w-4 text-amber-400" />
+                  Награды и поощрения
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded ml-auto font-mono-military">
+                    {displayMedals.length}
+                  </span>
+                </h3>
+                {displayMedals.length === 0 ? (
+                  <div className="bg-slate-950 border border-slate-850 rounded-xl p-4 text-center">
+                    <div className="text-xs text-slate-500 font-mono-military">
+                      Пока нет наград. Отличись на службе — командование заметит.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {displayMedals.map((medal, i) => (
+                      <div key={i} className="bg-slate-950 border border-amber-500/20 rounded-xl p-3 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                          <Award className="h-5 w-5 text-amber-400" />
+                        </div>
+                        <div className="text-xs text-slate-200 leading-snug">{medal}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Дипломы (заглушка) */}
+              <div className="p-5 border-t border-slate-800">
+                <h3 className="font-oswald font-bold text-base text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-blue-400" />
+                  Дипломы и сертификаты
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded ml-auto font-mono-military">
+                    скоро
+                  </span>
+                </h3>
+                <div className="bg-slate-950 border border-slate-850 rounded-xl p-4 text-center">
+                  <div className="text-xs text-slate-500 font-mono-military">
+                    Раздел в разработке. Здесь будут дипломы Военной Академии, сертификаты курсов и удостоверения квалификации.
+                  </div>
+                </div>
+              </div>
+
+              {/* Дисциплина (только в своём профиле или для командования) */}
+              {(isOwn || discordUser?.isCommander) && (
+                <div className="p-5 border-t border-slate-800">
+                  <h3 className="font-oswald font-bold text-base text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-red-400" />
+                    Дисциплина
+                    {isOwn && (
+                      <span className="text-[9px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded ml-2 font-mono-military uppercase">
+                        видно только вам
+                      </span>
+                    )}
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className={`rounded-xl p-3 text-center border ${
+                      displayWarnings === 0
+                        ? 'bg-emerald-500/10 border-emerald-500/30'
+                        : displayWarnings >= 3
+                        ? 'bg-red-500/10 border-red-500/30'
+                        : 'bg-amber-500/10 border-amber-500/30'
+                    }`}>
+                      <div className="text-[10px] font-mono-military text-slate-400 uppercase">Выговоры</div>
+                      <div className={`font-oswald font-black text-2xl mt-1 ${
+                        displayWarnings === 0 ? 'text-emerald-400' :
+                        displayWarnings >= 3 ? 'text-red-400' : 'text-amber-400'
+                      }`}>
+                        {displayWarnings}/3
+                      </div>
+                      {displayWarnings >= 3 && (
+                        <div className="text-[9px] text-red-400 font-mono-military mt-1">⚠ Подлежит увольнению</div>
+                      )}
+                    </div>
+                    <div className="bg-slate-950 border border-slate-850 rounded-xl p-3 text-center">
+                      <div className="text-[10px] font-mono-military text-slate-400 uppercase">Срок до взыскания</div>
+                      <div className="font-oswald font-black text-2xl mt-1 text-slate-300">
+                        7 дней
+                      </div>
+                      <div className="text-[9px] text-slate-500 font-mono-military mt-0.5">по §11 Дисц. устава</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Карьера (история званий — заглушка) */}
+              <div className="p-5 border-t border-slate-800">
+                <h3 className="font-oswald font-bold text-base text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-emerald-400" />
+                  Карьера в В/Ч 7863
+                </h3>
+                <div className="bg-slate-950 border border-slate-850 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    <div className="flex-1 flex items-center justify-between gap-2">
+                      <span className="font-oswald font-bold text-sm text-emerald-400">{displayRank}</span>
+                      <span className="text-[10px] font-mono-military text-slate-500">текущее звание</span>
+                    </div>
+                  </div>
+                  <div className="text-[11px] font-mono-military text-slate-500 pl-5">
+                    Полная история повышений будет доступна после интеграции с базой данных.
+                  </div>
+                </div>
+              </div>
+
+              {/* Подвал модалки — кнопки действий */}
+              <div className="p-5 border-t border-slate-800 bg-slate-950 flex flex-wrap gap-2 justify-end">
+                {displayDiscord && (
+                  <a
+                    href={`https://discord.com/users/${useDiscord && discordUser ? discordUser.id : ''}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-[#5865F2] hover:bg-[#4752C4] text-white font-oswald font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition flex items-center gap-2"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    Связаться в Discord
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={closeProfile}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-oswald font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition border border-slate-700"
+                >
+                  Закрыть
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* --- FOOTER --- */}
       <footer className="max-w-7xl mx-auto px-4 mt-12 border-t border-emerald-900/40 pt-6">
