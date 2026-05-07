@@ -4,11 +4,12 @@
 // =====================================================
 import { prisma } from '../_lib/prisma.js';
 import { getUserFromRequest, requireCommander } from '../_lib/auth.js';
+import { parseRequestUrl } from '../_lib/url.js';
 
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req: Request) {
-  const url = new URL(req.url);
+  const url = parseRequestUrl(req);
 
   // ====== УДАЛЕНИЕ ======
   if (req.method === 'DELETE') {
