@@ -7,7 +7,8 @@ const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || '809037474771763240';
 const MIGRATION_SECRET = process.env.MIGRATION_SECRET;
 
 export default async function handler(req: any, res: any) {
-  if (req.method !== 'POST') {
+  // Разрешаем POST и GET (GET для удобства открытия в браузере)
+  if (req.method !== 'POST' && req.method !== 'GET') {
     res.statusCode = 405;
     res.end('Method Not Allowed');
     return;
@@ -173,17 +174,154 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    json(res, 200, {
-      ok: true,
-      stats: {
-        total: members.length,
-        created,
-        updated,
-        errors,
-      },
-    });
+    const stats = {
+      total: members.length,
+      created,
+      updated,
+      errors,
+    };
+
+    // Если запрос из браузера (GET), показываем красивую HTML-страницу
+    const acceptHeader = req.headers?.accept || '';
+    const isBrowser = req.method === 'GET' && acceptHeader.includes('text/html');
+
+    if (isBrowser) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.statusCode = 200;
+      res.end(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Синхронизация Discord — В/Ч №7863</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body {
+              font-family: system-ui, -apple-system, sans-serif;
+              background: #090e15;
+              color: #e2e8f0;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              margin: 0;
+            }
+            .container {
+              background: #0f172a;
+              border: 1px solid #1e293b;
+              border-radius: 16px;
+              padding: 32px;
+              max-width: 400px;
+              text-align: center;
+            }
+            .success { color: #22c55e; }
+            .error { color: #ef4444; }
+            .stat {
+              display: flex;
+              justify-content: space-between;
+              padding: 8px 0;
+              border-bottom: 1px solid #1e293b;
+            }
+            .stat:last-child { border-bottom: none; }
+            .badge {
+              display: inline-block;
+              background: #064e3b;
+              color: #22c55e;
+              padding: 4px 12px;
+              border-radius: 9999px;
+              font-size: 12px;
+              font-weight: 600;
+              margin-bottom: 16px;
+            }
+            h1 { margin: 0 0 8px; font-size: 20px; }
+            p { color: #94a3b8; margin: 0 0 24px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="badge">✓ УСПЕШНО</div>
+            <h1>Синхронизация завершена</h1>
+            <p>Состав В/Ч №7863 обновлён из Discord</p>
+            
+            <div class="stat">
+              <span>Всего участников:</span>
+              <span class="success"><strong>${stats.total}</strong></span>
+            </div>
+            <div class="stat">
+              <span>Создано профилей:</span>
+              <span class="success"><strong>${stats.created}</strong></span>
+            </div>
+            <div class="stat">
+              <span>Обновлено:</span>
+              <span class="success"><strong>${stats.updated}</strong></span>
+            </div>
+            ${stats.errors > 0 ? `
+            <div class="stat">
+              <span>Ошибок:</span>
+              <span class="error"><strong>${stats.errors}</strong></span>
+            </div>
+            ` : ''}
+            
+            <p style="margin-top: 24px; font-size: 12px;">
+              <a href="/" style="color: #22c55e;">← Вернуться на сайт</a>
+            </p>
+          </div>
+        </body>
+        </html>
+      `);
+      return;
+    }
+
+    json(res, 200, { ok: true, stats });
   } catch (error) {
     console.error('/api/discord/sync-guild error', error);
+    
+    const acceptHeader = req.headers?.accept || '';
+    const isBrowser = req.method === 'GET' && acceptHeader.includes('text/html');
+    
+    if (isBrowser) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.statusCode = 500;
+      res.end(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Ошибка — В/Ч №7863</title>
+          <style>
+            body {
+              font-family: system-ui, sans-serif;
+              background: #090e15;
+              color: #e2e8f0;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              margin: 0;
+            }
+            .container {
+              background: #0f172a;
+              border: 1px solid #ef4444;
+              border-radius: 16px;
+              padding: 32px;
+              max-width: 400px;
+              text-align: center;
+            }
+            .error { color: #ef4444; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1 class="error">✗ Ошибка синхронизации</h1>
+            <p>${error instanceof Error ? error.message : 'Неизвестная ошибка'}</p>
+            <p><a href="/" style="color: #22c55e;">← На главную</a></p>
+          </div>
+        </body>
+        </html>
+      `);
+      return;
+    }
+
     json(res, 500, { 
       error: 'Failed to sync guild',
       details: error instanceof Error ? error.message : 'Unknown error'
