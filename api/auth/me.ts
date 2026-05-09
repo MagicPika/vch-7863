@@ -1,40 +1,38 @@
-// =====================================================
-// 🔐 Discord OAuth — получить данные текущего пользователя
-// =====================================================
-// Возвращает данные пользователя из cookie (если он залогинен)
-// или null (если нет).
-// =====================================================
+import { json } from '../lib/http';
+import { requireSession } from '../lib/session';
 
-export const config = {
-  runtime: 'edge',
-};
-
-export default function handler(req: Request) {
-  const cookieHeader = req.headers.get('cookie') || '';
-  const match = cookieHeader.match(/vch7863_user=([^;]+)/);
-
-  if (!match) {
-    return new Response(JSON.stringify({ user: null }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+export default async function handler(req: any, res: any) {
+  if (req.method !== 'GET') {
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
   }
 
   try {
-    // Декодируем URL-safe base64 → UTF-8 → JSON
-    let b64 = match[1].replace(/-/g, '+').replace(/_/g, '/');
-    while (b64.length % 4) b64 += '=';
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const jsonStr = new TextDecoder().decode(bytes);
-    const user = JSON.parse(jsonStr);
+    const session = await requireSession(req);
+    if (!session) {
+      json(res, 200, { user: null });
+      return;
+    }
 
-    return new Response(JSON.stringify({ user }), {
-      headers: { 'Content-Type': 'application/json' },
+    const roleIds = Array.isArray(session.user.roleIds) ? session.user.roleIds.map(String) : [];
+
+    json(res, 200, {
+      user: {
+        id: session.user.discordId,
+        username: session.user.username,
+        global_name: session.user.globalName,
+        avatar: session.user.avatar,
+        member: session.user.isMember
+          ? {
+              nick: session.user.nickname,
+              roles: roleIds,
+            }
+          : undefined,
+      },
     });
-  } catch {
-    return new Response(JSON.stringify({ user: null }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+  } catch (error) {
+    console.error('/api/auth/me error', error);
+    json(res, 500, { user: null, error: 'Internal server error' });
   }
 }

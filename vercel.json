@@ -1,8 +1,8 @@
 {
-  "buildCommand": "prisma generate && npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  "crons": [
+    {
+      "path": "/api/discord/sync-guild",
+      "schedule": "0 */6 * * *"
+    }
   ]
 }

@@ -1,10 +1,3 @@
-// =====================================================
-// 📊 СХЕМА БАЗЫ ДАННЫХ В/Ч 7863
-// =====================================================
-// Здесь описаны все таблицы.
-// При изменении — выполнить: npx prisma db push
-// =====================================================
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,89 +7,108 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 🪖 Военнослужащий (расширенный профиль)
-// id = Discord ID пользователя
+model User {
+  id           String     @id @default(cuid())
+  discordId    String     @unique
+  username     String
+  globalName   String?
+  avatar       String?
+  avatarUrl    String?
+  nickname     String?
+  roleIds      Json?
+  isMember     Boolean    @default(false)
+  isCommander  Boolean    @default(false)
+  rankName     String?
+  rankLevel    Int?
+  divisionCode String?
+  divisionName String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  lastLoginAt  DateTime?
+  sessions     Session[]
+  soldier      Soldier?
+  issuedAwards Award[]    @relation("AwardIssuer")
+  issuedWarnings Warning[] @relation("WarningIssuer")
+  auditLogs    AuditLog[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model Soldier {
-  id          String   @id  // Discord ID
-  username    String   // Discord username
-  displayName String   // Имя для отображения (Иванов И.И.)
-  avatar      String?  // URL аватара из Discord (кэш)
-  rankName    String?  // Текущее звание (из Discord-роли)
-  divisionCode String? // Подразделение (из Discord-роли)
-  position    String?  // Должность (Командир МСТ и т.д.)
-  joinDate    DateTime @default(now()) // Дата вступления в часть
-  status      String   @default("В СТРОЮ") // В СТРОЮ / ОТПУСК / РЕЗЕРВ
-  notes       String?  // Заметки о бойце (видны только командованию)
+  id            String    @id @default(cuid())
+  userId        String?   @unique
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name          String
+  rankId        Int?
+  division      String?
+  position      String?
+  discord       String?
+  status        String    @default("В СТРОЮ")
+  warningsCount Int       @default(0)
+  joinDate      DateTime?
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  awards        Award[]
+  warnings      Warning[]
+  auditLogs     AuditLog[]
 
-  awards      Award[]
-  warnings    Warning[]
-  history     RankChange[]
-  diplomas    Diploma[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  @@index([userId])
+  @@index([division])
+  @@index([rankId])
 }
 
-// 🎖️ Награда (медаль, орден, благодарность)
 model Award {
-  id          String   @id @default(cuid())
-  soldierId   String
-  soldier     Soldier  @relation(fields: [soldierId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  soldierId       String
+  soldier         Soldier  @relation(fields: [soldierId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  icon            String?
+  color           String?
+  issuedByUserId  String?
+  issuedByUser    User?    @relation("AwardIssuer", fields: [issuedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
 
-  name        String   // Название (например "Медаль За Отвагу")
-  description String?  // За что выдана
-  icon        String   @default("medal") // medal / star / cross / trophy
-  color       String   @default("amber") // amber / red / blue / emerald
-
-  awardedBy   String?  // Discord ID того кто выдал
-  awardedByName String? // Имя выдавшего
-  awardedAt   DateTime @default(now())
+  @@index([soldierId])
+  @@index([issuedByUserId])
 }
 
-// ⚠️ Выговор / дисциплинарное взыскание
 model Warning {
-  id          String   @id @default(cuid())
-  soldierId   String
-  soldier     Soldier  @relation(fields: [soldierId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  soldierId      String
+  soldier        Soldier  @relation(fields: [soldierId], references: [id], onDelete: Cascade)
+  type           String
+  reason         String
+  issuedByUserId String?
+  issuedByUser   User?    @relation("WarningIssuer", fields: [issuedByUserId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
 
-  type        String   // выговор / ограничение увольнения / снижение в звании
-  reason      String   // Причина
-  isActive    Boolean  @default(true) // снято или нет
-
-  issuedBy    String?  // Discord ID
-  issuedByName String?
-  issuedAt    DateTime @default(now())
-  removedAt   DateTime?
-  removedBy   String?
-  removedByName String?
+  @@index([soldierId])
+  @@index([issuedByUserId])
 }
 
-// 📈 История изменения званий
-model RankChange {
+model AuditLog {
   id          String   @id @default(cuid())
-  soldierId   String
-  soldier     Soldier  @relation(fields: [soldierId], references: [id], onDelete: Cascade)
+  actorUserId String?
+  actorUser   User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  soldierId   String?
+  soldier     Soldier? @relation(fields: [soldierId], references: [id], onDelete: SetNull)
+  action      String
+  payload     Json?
+  createdAt   DateTime @default(now())
 
-  fromRank    String?  // С какого (null = первое присвоение)
-  toRank      String   // На какое
-  reason      String?  // Причина повышения/понижения
-
-  changedBy   String?  // Discord ID
-  changedByName String?
-  changedAt   DateTime @default(now())
-}
-
-// 🎓 Диплом / сертификат
-model Diploma {
-  id          String   @id @default(cuid())
-  soldierId   String
-  soldier     Soldier  @relation(fields: [soldierId], references: [id], onDelete: Cascade)
-
-  title       String   // "Диплом КМБ"
-  number      String?  // Номер диплома
-  description String?
-
-  issuedBy    String?  // Discord ID того кто выдал
-  issuedByName String?
-  issuedAt    DateTime @default(now())
+  @@index([actorUserId])
+  @@index([soldierId])
+  @@index([action])
 }

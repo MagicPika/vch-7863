@@ -1,80 +1,72 @@
-// =====================================================
-// ⚠️ POST /api/admin/warning — выдать выговор
-// DELETE /api/admin/warning?id=... — снять выговор
-// =====================================================
-import { prisma } from '../_lib/prisma';
-import { getUserFromRequest, requireCommander } from '../_lib/auth';
+import { json, readJsonBody } from '../lib/http';
+import { requireSession } from '../lib/session';
+import { ensureSoldierById } from '../lib/soldiers';
+import { prisma } from '../lib/prisma';
 
-export const config = { runtime: 'nodejs' };
-
-export default async function handler(req: Request) {
-  const url = new URL(req.url);
-
-  // ====== СНЯТИЕ ВЫГОВОРА ======
-  if (req.method === 'DELETE') {
-    const denied = requireCommander(req);
-    if (denied) return denied;
-
-    const user = getUserFromRequest(req)!;
-    const id = url.searchParams.get('id');
-    if (!id) return new Response(JSON.stringify({ error: 'ID не указан' }), { status: 400 });
-
-    try {
-      await prisma.warning.update({
-        where: { id },
-        data: {
-          isActive: false,
-          removedAt: new Date(),
-          removedBy: user.id,
-          removedByName: user.displayName,
-        },
-      });
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (e: any) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500 });
-    }
-  }
-
-  // ====== ВЫДАЧА ВЫГОВОРА ======
+export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
   }
-
-  const denied = requireCommander(req);
-  if (denied) return denied;
-
-  const user = getUserFromRequest(req)!;
 
   try {
-    const body = await req.json();
-    const { soldierId, type, reason } = body;
-
-    if (!soldierId || !type || !reason) {
-      return new Response(JSON.stringify({ error: 'soldierId, type, reason обязательны' }), { status: 400 });
+    const session = await requireSession(req);
+    if (!session?.user?.isCommander) {
+      json(res, 403, { ok: false, error: 'Forbidden' });
+      return;
     }
 
-    const soldier = await prisma.soldier.findUnique({ where: { id: soldierId } });
+    const body = await readJsonBody<{
+      soldierId?: string;
+      type?: string;
+      reason?: string;
+    }>(req);
+
+    if (!body.soldierId || !body.reason?.trim()) {
+      json(res, 400, { ok: false, error: 'soldierId and reason are required' });
+      return;
+    }
+
+    const soldier = await ensureSoldierById(body.soldierId);
     if (!soldier) {
-      return new Response(JSON.stringify({ error: 'Солдат не найден' }), { status: 404 });
+      json(res, 404, { ok: false, error: 'Soldier not found' });
+      return;
     }
 
     const warning = await prisma.warning.create({
       data: {
-        soldierId,
-        type,
-        reason,
-        issuedBy: user.id,
-        issuedByName: user.displayName,
+        soldierId: soldier.id,
+        type: body.type?.trim() || 'выговор',
+        reason: body.reason.trim(),
+        issuedByUserId: session.user.id,
       },
     });
 
-    return new Response(JSON.stringify({ ok: true, warning }), {
-      headers: { 'Content-Type': 'application/json' },
+    await prisma.soldier.update({
+      where: { id: soldier.id },
+      data: {
+        warningsCount: {
+          increment: 1,
+        },
+      },
     });
-  } catch (e: any) {
-    console.error('Warning error:', e);
-    return new Response(JSON.stringify({ error: 'Ошибка БД', details: e.message }), { status: 500 });
+
+    await prisma.auditLog.create({
+      data: {
+        actorUserId: session.user.id,
+        soldierId: soldier.id,
+        action: 'warning.create',
+        payload: {
+          warningId: warning.id,
+          type: warning.type,
+        },
+      },
+    });
+
+    json(res, 200, { ok: true, warning });
+  } catch (error) {
+    console.error('/api/admin/warning error', error);
+    json(res, 500, { ok: false, error: 'Failed to create warning' });
   }
 }

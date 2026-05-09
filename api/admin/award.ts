@@ -1,74 +1,67 @@
-// =====================================================
-// 🎖️ POST /api/admin/award — выдать награду
-// DELETE /api/admin/award?id=... — удалить награду
-// =====================================================
-import { prisma } from '../_lib/prisma';
-import { getUserFromRequest, requireCommander } from '../_lib/auth';
+import { json, readJsonBody } from '../lib/http';
+import { requireSession } from '../lib/session';
+import { ensureSoldierById } from '../lib/soldiers';
+import { prisma } from '../lib/prisma';
 
-export const config = { runtime: 'nodejs' };
-
-export default async function handler(req: Request) {
-  const url = new URL(req.url);
-
-  // ====== УДАЛЕНИЕ ======
-  if (req.method === 'DELETE') {
-    const denied = requireCommander(req);
-    if (denied) return denied;
-
-    const id = url.searchParams.get('id');
-    if (!id) return new Response(JSON.stringify({ error: 'ID не указан' }), { status: 400 });
-
-    try {
-      await prisma.award.delete({ where: { id } });
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (e: any) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500 });
-    }
-  }
-
-  // ====== ВЫДАЧА ======
+export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
   }
-
-  const denied = requireCommander(req);
-  if (denied) return denied;
-
-  const user = getUserFromRequest(req)!;
 
   try {
-    const body = await req.json();
-    const { soldierId, name, description, icon, color } = body;
-
-    if (!soldierId || !name) {
-      return new Response(JSON.stringify({ error: 'soldierId и name обязательны' }), { status: 400 });
+    const session = await requireSession(req);
+    if (!session?.user?.isCommander) {
+      json(res, 403, { ok: false, error: 'Forbidden' });
+      return;
     }
 
-    // Проверим что солдат существует
-    const soldier = await prisma.soldier.findUnique({ where: { id: soldierId } });
+    const body = await readJsonBody<{
+      soldierId?: string;
+      name?: string;
+      description?: string | null;
+      icon?: string | null;
+      color?: string | null;
+    }>(req);
+
+    if (!body.soldierId || !body.name?.trim()) {
+      json(res, 400, { ok: false, error: 'soldierId and name are required' });
+      return;
+    }
+
+    const soldier = await ensureSoldierById(body.soldierId);
     if (!soldier) {
-      return new Response(JSON.stringify({ error: 'Солдат не найден. Он должен сначала войти на сайт.' }), { status: 404 });
+      json(res, 404, { ok: false, error: 'Soldier not found' });
+      return;
     }
 
     const award = await prisma.award.create({
       data: {
-        soldierId,
-        name,
-        description: description || null,
-        icon: icon || 'medal',
-        color: color || 'amber',
-        awardedBy: user.id,
-        awardedByName: user.displayName,
+        soldierId: soldier.id,
+        name: body.name.trim(),
+        description: body.description ?? null,
+        icon: body.icon ?? null,
+        color: body.color ?? null,
+        issuedByUserId: session.user.id,
       },
     });
 
-    return new Response(JSON.stringify({ ok: true, award }), {
-      headers: { 'Content-Type': 'application/json' },
+    await prisma.auditLog.create({
+      data: {
+        actorUserId: session.user.id,
+        soldierId: soldier.id,
+        action: 'award.create',
+        payload: {
+          awardId: award.id,
+          name: award.name,
+        },
+      },
     });
-  } catch (e: any) {
-    console.error('Award error:', e);
-    return new Response(JSON.stringify({ error: 'Ошибка БД', details: e.message }), { status: 500 });
+
+    json(res, 200, { ok: true, award });
+  } catch (error) {
+    console.error('/api/admin/award error', error);
+    json(res, 500, { ok: false, error: 'Failed to create award' });
   }
 }

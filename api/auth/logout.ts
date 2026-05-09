@@ -1,30 +1,18 @@
-// =====================================================
-// 🔐 Discord OAuth — выход
-// =====================================================
-// Удаляет cookie с данными пользователя.
-// =====================================================
+import { redirect } from '../lib/http';
+import { destroySession } from '../lib/session';
 
-export const config = {
-  runtime: 'edge',
-};
+export default async function handler(req: any, res: any) {
+  if (req.method !== 'GET') {
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
+  }
 
-export default function handler(req: Request) {
-  const url = new URL(req.url);
-
-  const expiredCookie = [
-    'vch7863_user=',
-    'Path=/',
-    'HttpOnly',
-    'Secure',
-    'SameSite=Lax',
-    'Max-Age=0',
-  ].join('; ');
-
-  return new Response(null, {
-    status: 302,
-    headers: {
-      'Set-Cookie': expiredCookie,
-      Location: `${url.origin}/?auth=loggedout`,
-    },
-  });
+  try {
+    await destroySession(req, res);
+    redirect(res, '/');
+  } catch (error) {
+    console.error('/api/auth/logout error', error);
+    redirect(res, '/');
+  }
 }

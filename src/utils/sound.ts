@@ -1,109 +1,73 @@
-// Web Audio API Synthesizer for Tactical Sound Effects
-let audioCtx: AudioContext | null = null;
+type TacticalSoundType = 'click' | 'radar' | 'alarm' | 'success' | 'alert';
 
-function getAudioContext() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+const audioContextState: {
+  ctx: AudioContext | null;
+} = {
+  ctx: null,
+};
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctx) return null;
+  if (!audioContextState.ctx) {
+    audioContextState.ctx = new Ctx();
   }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-  return audioCtx;
+  return audioContextState.ctx;
 }
 
-export function playTacticalSound(type: 'click' | 'radar' | 'alarm' | 'success' | 'alert') {
-  try {
-    const ctx = getAudioContext();
-    const now = ctx.currentTime;
+function tone(ctx: AudioContext, frequency: number, duration: number, type: OscillatorType, gainValue: number, startAt: number) {
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
 
-    if (type === 'click') {
-      // Short metallic synth tick
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(1200, now);
-      osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
-      
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.1);
-    } 
-    else if (type === 'radar') {
-      // Echoing radar ping
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, now);
-      
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 1.2);
-    } 
-    else if (type === 'success') {
-      // Upward military arpeggio
-      const notes = [440, 554.37, 659.25, 880];
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, now + i * 0.1);
-        
-        gain.gain.setValueAtTime(0.08, now + i * 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.2);
-        
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now + i * 0.1);
-        osc.stop(now + i * 0.1 + 0.2);
-      });
-    } 
-    else if (type === 'alert') {
-      // Dual-tone warning beep
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(660, now);
-      osc.frequency.setValueAtTime(440, now + 0.15);
-      
-      gain.gain.setValueAtTime(0.06, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.3);
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, startAt);
+
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(gainValue, startAt + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+
+  oscillator.start(startAt);
+  oscillator.stop(startAt + duration + 0.02);
+}
+
+export function playTacticalSound(type: TacticalSoundType) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const startAt = ctx.currentTime + 0.01;
+
+  try {
+    if (ctx.state === 'suspended') {
+      void ctx.resume();
     }
-    else if (type === 'alarm') {
-      // Continuous wailing siren for 2 seconds
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sawtooth';
-      
-      osc.frequency.setValueAtTime(500, now);
-      osc.frequency.linearRampToValueAtTime(800, now + 0.4);
-      osc.frequency.linearRampToValueAtTime(500, now + 0.8);
-      osc.frequency.linearRampToValueAtTime(800, now + 1.2);
-      osc.frequency.linearRampToValueAtTime(500, now + 1.6);
-      osc.frequency.linearRampToValueAtTime(300, now + 2.0);
-      
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.linearRampToValueAtTime(0.05, now + 1.6);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 2.0);
+
+    switch (type) {
+      case 'click':
+        tone(ctx, 620, 0.05, 'square', 0.03, startAt);
+        break;
+      case 'radar':
+        tone(ctx, 420, 0.12, 'sine', 0.025, startAt);
+        tone(ctx, 680, 0.1, 'sine', 0.02, startAt + 0.08);
+        break;
+      case 'alarm':
+        tone(ctx, 780, 0.12, 'sawtooth', 0.03, startAt);
+        tone(ctx, 520, 0.12, 'sawtooth', 0.03, startAt + 0.14);
+        break;
+      case 'success':
+        tone(ctx, 520, 0.09, 'triangle', 0.03, startAt);
+        tone(ctx, 660, 0.11, 'triangle', 0.03, startAt + 0.08);
+        tone(ctx, 880, 0.14, 'triangle', 0.025, startAt + 0.18);
+        break;
+      case 'alert':
+        tone(ctx, 300, 0.16, 'square', 0.028, startAt);
+        tone(ctx, 240, 0.18, 'square', 0.028, startAt + 0.12);
+        break;
     }
-  } catch (e) {
-    console.warn("Audio Context could not start due to user interaction policies", e);
+  } catch {
+    // ignore audio issues silently
   }
 }
