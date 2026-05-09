@@ -1,8 +1,8 @@
-import { getDiscordAuthorizeUrl } from '../lib/discord';
-import { redirect } from '../lib/http';
-import { generateRandomToken, setOauthStateCookie } from '../lib/session';
+const { getDiscordAuthorizeUrl } = require('../lib/discord');
+const { redirect } = require('../lib/http');
+const { generateRandomToken, setOauthStateCookie } = require('../lib/session');
 
-export default async function handler(req: any, res: any) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'GET') {
     res.statusCode = 405;
     res.end('Method Not Allowed');
@@ -17,4 +17,4 @@ export default async function handler(req: any, res: any) {
     console.error('OAuth login init error', error);
     redirect(res, '/?auth=error');
   }
-}
+};
